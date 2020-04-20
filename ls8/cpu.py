@@ -50,14 +50,14 @@ class CPU:
 
     def ram_read(self, mar):
         '''
-        Takes address (mar) and returns the value (mdr) stored there
+        Takes address (mar) in ram and returns the value (mdr) stored there
         '''
         mdr = self.ram[mar]
         return mdr
     
     def ram_write(self, mar, mdr):
         '''
-        Stores 'value' (MDR) at given 'address' (MAR)
+        Stores 'value' (MDR) at given 'address' (MAR) in ram
         '''
         self.ram[mar] = mdr
 
@@ -69,7 +69,7 @@ class CPU:
 
     def reg_write(self, address, value):
         '''
-        Stores value at given address
+        Stores value at given address in register
         '''
         self.register[address] = value
 
