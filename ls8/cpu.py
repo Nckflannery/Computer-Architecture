@@ -2,15 +2,20 @@
 
 import sys
 
+LDI = 0b10000010
+PRN = 0b01000111
+HLT = 0b00000001
+
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
         # Step 1
-        ram = [0] * 256
-        register = [0] * 8
-        pc = 0
+        self.ram = [0] * 256
+        self.register = [0] * 8
+        self.pc = 0
 
     def load(self):
         """Load a program into memory."""
@@ -56,10 +61,52 @@ class CPU:
         '''
         self.ram[mar] = mdr
 
+    def reg_read(self, address):
+        '''
+        Takes address in register and returns value stored there 
+        '''
+        return self.register[address]
+
+    def reg_write(self, address, value):
+        '''
+        Stores value at given address
+        '''
+        self.register[address] = value
+
     def run(self):
-        """Run the CPU."""
-        pass
-    
+        '''
+        Run the CPU
+        '''
+        # Used to exit run()
+        running = True
+
+        while running:
+            # Read memory address stored in PC and store result in IR
+            ir = self.ram_read(self.pc)
+
+            # LDI command
+            if ir == LDI:
+                # Read values at PC+1 and PC+2 into operand_a and operand_b respectively
+                operand_a = self.ram_read(self.pc + 1)
+                operand_b = self.ram_read(self.pc + 2)
+                # Set register at address 'operand_a' to value 'operand_b'
+                self.reg_write(operand_a, operand_b)
+                self.pc += 3
+            # PRN command
+            elif ir == PRN:
+                # Read value at PC+1 into operand_a
+                operand_a = self.ram_read(self.pc + 1)
+                # Print value
+                print(self.reg_read(operand_a))
+                self.pc += 2
+            elif ir == HLT:
+                running = False
+                self.pc += 1
+            else:
+                print('Unknown Command!')
+                running = False
+
+
     def trace(self):
         """
         Handy function to print out the CPU state. You might want to call this
