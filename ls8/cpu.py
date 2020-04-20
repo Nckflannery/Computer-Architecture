@@ -101,7 +101,7 @@ class CPU:
                 self.pc += 2
             elif ir == HLT:
                 running = False
-                self.pc += 1
+                #self.pc += 1
             else:
                 print('Unknown Command!')
                 running = False
