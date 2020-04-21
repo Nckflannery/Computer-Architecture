@@ -18,11 +18,30 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        # Step 1
         self.ram = [0] * 256
         self.register = [0] * 8
         self.pc = 0
+        self.branchtable = {
+            LDI : self.ldi,
+            PRN : self.prn,
+            HLT : self.hlt,
+            MUL : self.alu,
+            ADD : self.alu,
+            DIV : self.alu,
+            SUB : self.alu
+        }
 
+    def ldi(self, op_a, op_b):
+        self.register[op_a] = op_b 
+    
+    # Only one operand but was cleaner to just pass them as unused parameters here
+    def prn(self, op_a, op_b):
+        print(self.register[op_a])
+    
+    # No operands but again was cleaner to pass as unused paramters here
+    def hlt(self, op_a, op_b):
+        sys.exit()
+        
     def load(self, filename):
         """Load a program into memory."""
 
@@ -90,58 +109,31 @@ class CPU:
         '''
         self.ram[mar] = mdr
 
-    def reg_read(self, address):
-        '''
-        Takes address in register and returns value stored there 
-        '''
-        return self.register[address]
-
-    def reg_write(self, address, value):
-        '''
-        Stores value at given address in register
-        '''
-        self.register[address] = value
-
     def run(self):
         '''
         Run the CPU
         '''
-        
-        # Used to exit run()
-        running = True
-
-        while running:
-            # Read memory address stored in PC and store result in IR
-            ir = self.ram_read(self.pc)
-
-            # LDI instruction
-            if ir == LDI:
-                # Read values at PC+1 and PC+2 into operand_a and operand_b respectively
-                operand_a = self.ram_read(self.pc + 1)
-                operand_b = self.ram_read(self.pc + 2)
-                # Set register at address 'operand_a' to value 'operand_b'
-                self.reg_write(operand_a, operand_b)
-                self.pc += 3
-            # PRN instruction
-            elif ir == PRN:
-                # Read value at PC+1 into operand_a
-                operand_a = self.ram_read(self.pc + 1)
-                # Print value
-                print(self.reg_read(operand_a))
-                self.pc += 2
-            elif ir == HLT:
-                running = False
-            # MUL instruction
-            # TODO: Impliment all ALU functions here (use list of instructions? [ADD, MUL...])
-            elif ir == MUL:
-                operand_a = self.ram_read(self.pc + 1)
-                operand_b = self.ram_read(self.pc + 2)
-                self.alu(ir, operand_a, operand_b)
-                self.pc += 3
+        while True:
+            # Get opcodes and operands
+            ir = self.ram[self.pc]
+            op_a = self.ram_read(self.pc + 1)
+            op_b = self.ram_read(self.pc + 2)
+            # To update self.pc counter
+            run_counter = (ir >> 6) + 1
+            # To handle alu operations
+            # NOTE: Less code but add another if statement, may be quicker to implement
+                  # individual helper functions that call ALU with specified operations
+            alu_op = bool(((ir >> 5) & 0b1))
+            
+            if ir in self.branchtable:
+                if alu_op:
+                    self.branchtable[ir](ir, op_a, op_b)
+                else:
+                    self.branchtable[ir](op_a, op_b)
             else:
-                print('Unknown Command!')
-                running = False
-# TODO: Maybe make dict of all instructions to clean up all the if statements
+                print('Unsupported operation')
+            self.pc += run_counter
+    
 
     def trace(self):
         """
