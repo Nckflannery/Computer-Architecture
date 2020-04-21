@@ -17,11 +17,28 @@ class CPU:
         self.register = [0] * 8
         self.pc = 0
 
-    def load(self):
+    def load(self, filename):
         """Load a program into memory."""
 
+        # Counter
         address = 0
 
+        # Open ls8 file
+        with open(filename) as f:
+            # Read each line
+            for line in f:
+                # Split on # to remove comments
+                line = line.split('#')
+                # Remove empty spaces
+                line = line[0].strip()
+                if line == '':
+                    continue
+                # Convert to int and save to ram at address
+                self.ram[address] = int(line, 2)
+                # Incriment address counter
+                address += 1
+        '''
+        Old hardcoded program:
         # For now, we've just hardcoded a program:
 
         program = [
@@ -37,6 +54,7 @@ class CPU:
         for instruction in program:
             self.ram[address] = instruction
             address += 1
+            '''
 
 
     def alu(self, op, reg_a, reg_b):
