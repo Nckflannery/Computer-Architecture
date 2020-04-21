@@ -5,6 +5,12 @@ import sys
 LDI = 0b10000010
 PRN = 0b01000111
 HLT = 0b00000001
+MUL = 0b10100010
+
+# Unused so far
+ADD = 0b10100000
+DIV = 0b10100011
+SUB = 0b10100001
 
 
 class CPU:
@@ -33,7 +39,7 @@ class CPU:
                 line = line[0].strip()
                 if line == '':
                     continue
-                # Convert to int and save to ram at address
+                # Convert to int (base 2 binary) and save to ram at address
                 self.ram[address] = int(line, 2)
                 # Incriment address counter
                 address += 1
@@ -60,9 +66,14 @@ class CPU:
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
-        if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        if op == ADD:
+            self.register[reg_a] += self.register[reg_b]
+        elif op == SUB:
+            self.register[reg_a] -= self.register[reg_b]
+        elif op == MUL:
+            self.register[reg_a] *= self.register[reg_b]
+        elif op == DIV:
+            self.register[reg_a] /= self.register[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -95,6 +106,7 @@ class CPU:
         '''
         Run the CPU
         '''
+        
         # Used to exit run()
         running = True
 
@@ -102,7 +114,7 @@ class CPU:
             # Read memory address stored in PC and store result in IR
             ir = self.ram_read(self.pc)
 
-            # LDI command
+            # LDI instruction
             if ir == LDI:
                 # Read values at PC+1 and PC+2 into operand_a and operand_b respectively
                 operand_a = self.ram_read(self.pc + 1)
@@ -110,7 +122,7 @@ class CPU:
                 # Set register at address 'operand_a' to value 'operand_b'
                 self.reg_write(operand_a, operand_b)
                 self.pc += 3
-            # PRN command
+            # PRN instruction
             elif ir == PRN:
                 # Read value at PC+1 into operand_a
                 operand_a = self.ram_read(self.pc + 1)
@@ -119,11 +131,17 @@ class CPU:
                 self.pc += 2
             elif ir == HLT:
                 running = False
-                #self.pc += 1
+            # MUL instruction
+            # TODO: Impliment all ALU functions here (use list of instructions? [ADD, MUL...])
+            elif ir == MUL:
+                operand_a = self.ram_read(self.pc + 1)
+                operand_b = self.ram_read(self.pc + 2)
+                self.alu(ir, operand_a, operand_b)
+                self.pc += 3
             else:
                 print('Unknown Command!')
                 running = False
-
+# TODO: Maybe make dict of all instructions to clean up all the if statements
 
     def trace(self):
         """
