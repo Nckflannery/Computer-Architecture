@@ -2,13 +2,17 @@
 
 import sys
 
-LDI = 0b10000010
-PRN = 0b01000111
-HLT = 0b00000001
-POP = 0b01000110
-PUSH = 0b01000101
 CALL = 0b01010000
+HLT = 0b00000001
+IRET = 0b00010011
+JMP = 0b01010100
+LDI = 0b10000010
+POP = 0b01000110
+PRA = 0b01001000
+PRN = 0b01000111
+PUSH = 0b01000101
 RET = 0b00010001
+ST = 0b10000100
 # ALU ops
 MUL = 0b10100010
 ADD = 0b10100000
@@ -24,33 +28,72 @@ class CPU:
         self.ram = [0] * 256
         self.register = [0] * 8
         self.pc = 0
+        self.fl = 0
         self.register[SP] = 0xF4
         self.branchtable = {
-            LDI : self.ldi,
-            PRN : self.prn,
-            HLT : self.hlt,
-            POP : self.pop,
-            PUSH: self.push,
             CALL: self.call,
+            HLT : self.hlt,
+            IRET: self.iret,
+            JMP: self.jmp,
+            LDI : self.ldi,
+            POP : self.pop,
+            PRA: self.pra,
+            PRN : self.prn,
+            PUSH: self.push,
             RET: self.ret,
+            ST: self.st,
             MUL : self.alu,
             ADD : self.alu,
             DIV : self.alu,
             SUB : self.alu
         }
-
-    def ldi(self, op_a, op_b):
-        self.register[op_a] = op_b 
     
-    # Only one operand but was cleaner to just pass them as unused parameters here
-    def prn(self, op_a, op_b=None):
-        print(self.register[op_a])
+    def call(self, op_a, op_b=None):
+        '''
+        Calls a subroutine(function) at address stored in register[op_a]
+        '''
+        # Decriment SP
+        self.register[SP] -= 1
+        self.ram_write(self.register[SP], self.pc + 2)
+        self.pc = self.register[op_a]
     
     # No operands but again was cleaner to pass as unused paramters here
     def hlt(self, op_a=None, op_b=None):
+        '''
+        Halt cpu and exit emulator
+        '''
         sys.exit()
+
+    def iret(self, op_a, op_b=None):
+        '''
+        Return from interrupt
+        '''
+        # Pop R6-R0 off the stack in that order
+        for i in (6, -1, -1):
+            self.register[i] = self.ram_read(self.register[SP])
+            self.register[SP] += 1
+        # TODO: FL register is popped off the stack
+
+        # TODO: Return address is popped of the stack and stored in PC
+
+        # TODO: Re-enable interrupts
+    
+    def jmp(self, op_a, op_b=None):
+        '''
+        Jump to the address stored in register[op_a]
+        '''
+        self.pc = self.register[op_a]
+    
+    def ldi(self, op_a, op_b):
+        '''
+        Set the value of register[op_a] to op_b
+        '''
+        self.register[op_a] = op_b 
     
     def pop(self, op_a, op_b=None):
+        '''
+        Pop the value at the top of the stack into register[op_a]
+        '''
         # Get value from ram at SP in register
         value = self.ram_read(self.register[SP])
         # Set register at address given to value
@@ -58,24 +101,43 @@ class CPU:
         # Increment SP
         self.register[SP] += 1
         return value
-    
+      
+    def pra(self, op_a, op_b=None):
+        '''
+        Print alpha character value stored in the given register
+        '''
+        print(chr(self.register[op_a]))
+        
+    # Only one operand but was cleaner to just pass them as unused parameters here
+    def prn(self, op_a, op_b=None):
+        '''
+        Print numeric value stored in register[op_a]
+        '''
+        print(self.register[op_a])
+
     def push(self, op_a, op_b=None):
+        '''
+        Push the value in the register[op_a] onto the stack
+        '''
         # Decriment SP
         self.register[SP] -= 1
         # Write value given to ram at SP address
         self.ram_write(self.register[SP], self.register[op_a])
     
-    def call(self, op_a, op_b=None):
-        # Decriment SP
-        self.register[SP] -= 1
-        # Write 
-        self.ram_write(self.register[SP], self.pc + 2)
-        self.pc = self.register[op_a]
-    
     def ret(self, op_a=None, op_b=None):
+        '''
+        Return from subroutine
+        '''
         self.pc = self.ram_read(self.register[SP])
         self.register[SP] += 1
-        
+
+    def st(self, op_a, op_b):
+        '''
+        Store value in register[op_b] in the address stored in register[op_a]
+        '''
+        self.ram_write(self.register[op_a], self.register[op_b])
+
+
     def load(self, filename):
         """Load a program into memory."""
 
@@ -96,25 +158,6 @@ class CPU:
                 self.ram[address] = int(line, 2)
                 # Incriment address counter
                 address += 1
-        '''
-        Old hardcoded program:
-        # For now, we've just hardcoded a program:
-
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
-
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
-            '''
-
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -126,7 +169,10 @@ class CPU:
         elif op == MUL:
             self.register[reg_a] *= self.register[reg_b]
         elif op == DIV:
-            self.register[reg_a] /= self.register[reg_b]
+            if self.register[reg_b] != 0:
+                self.register[reg_a] /= self.register[reg_b]
+            else:
+                raise Exception("Cannot divide by 0")
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -147,6 +193,9 @@ class CPU:
         '''
         Run the CPU
         '''
+
+        # TODO: Include interupt handler
+        
         while True:
             # Get opcodes and operands
             ir = self.ram[self.pc]
