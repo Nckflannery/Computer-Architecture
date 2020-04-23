@@ -7,6 +7,8 @@ PRN = 0b01000111
 HLT = 0b00000001
 POP = 0b01000110
 PUSH = 0b01000101
+CALL = 0b01010000
+RET = 0b00010001
 # ALU ops
 MUL = 0b10100010
 ADD = 0b10100000
@@ -29,6 +31,8 @@ class CPU:
             HLT : self.hlt,
             POP : self.pop,
             PUSH: self.push,
+            CALL: self.call,
+            RET: self.ret,
             MUL : self.alu,
             ADD : self.alu,
             DIV : self.alu,
@@ -43,7 +47,7 @@ class CPU:
         print(self.register[op_a])
     
     # No operands but again was cleaner to pass as unused paramters here
-    def hlt(self, op_a, op_b=None):
+    def hlt(self, op_a=None, op_b=None):
         sys.exit()
     
     def pop(self, op_a, op_b=None):
@@ -56,10 +60,21 @@ class CPU:
         return value
     
     def push(self, op_a, op_b=None):
-        # Decrement SP
+        # Decriment SP
         self.register[SP] -= 1
         # Write value given to ram at SP address
         self.ram_write(self.register[SP], self.register[op_a])
+    
+    def call(self, op_a, op_b=None):
+        # Decriment SP
+        self.register[SP] -= 1
+        # Write 
+        self.ram_write(self.register[SP], self.pc + 2)
+        self.pc = self.register[op_a]
+    
+    def ret(self, op_a=None, op_b=None):
+        self.pc = self.ram_read(self.register[SP])
+        self.register[SP] += 1
         
     def load(self, filename):
         """Load a program into memory."""
@@ -143,6 +158,8 @@ class CPU:
             # NOTE: Less code but adds another if statement, may be quicker to implement
                   # individual helper functions that call ALU with specified operations
             alu_op = bool(((ir >> 5) & 0b1))
+            # To handle ops that set pc
+            set_pc = ((ir >> 4) & 0b1)
     
             if ir in self.branchtable:
                 if alu_op:
@@ -151,7 +168,8 @@ class CPU:
                     self.branchtable[ir](op_a, op_b)
             else:
                 print('Unsupported operation')
-            self.pc += run_counter
+            if not set_pc:
+                self.pc += run_counter
     
 
     def trace(self):
