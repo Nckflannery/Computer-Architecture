@@ -5,6 +5,12 @@ import sys
 LDI = 0b10000010
 PRN = 0b01000111
 HLT = 0b00000001
+MUL = 0b10100010
+
+# Unused so far
+ADD = 0b10100000
+DIV = 0b10100011
+SUB = 0b10100001
 
 
 class CPU:
@@ -12,16 +18,52 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        # Step 1
         self.ram = [0] * 256
         self.register = [0] * 8
         self.pc = 0
+        self.branchtable = {
+            LDI : self.ldi,
+            PRN : self.prn,
+            HLT : self.hlt,
+            MUL : self.alu,
+            ADD : self.alu,
+            DIV : self.alu,
+            SUB : self.alu
+        }
 
-    def load(self):
+    def ldi(self, op_a, op_b):
+        self.register[op_a] = op_b 
+    
+    # Only one operand but was cleaner to just pass them as unused parameters here
+    def prn(self, op_a, op_b):
+        print(self.register[op_a])
+    
+    # No operands but again was cleaner to pass as unused paramters here
+    def hlt(self, op_a, op_b):
+        sys.exit()
+        
+    def load(self, filename):
         """Load a program into memory."""
 
+        # Counter
         address = 0
 
+        # Open ls8 file
+        with open(filename) as f:
+            # Read each line
+            for line in f:
+                # Split on # to remove comments
+                line = line.split('#')
+                # Remove empty spaces
+                line = line[0].strip()
+                if line == '':
+                    continue
+                # Convert to int (base 2 binary) and save to ram at address
+                self.ram[address] = int(line, 2)
+                # Incriment address counter
+                address += 1
+        '''
+        Old hardcoded program:
         # For now, we've just hardcoded a program:
 
         program = [
@@ -37,14 +79,20 @@ class CPU:
         for instruction in program:
             self.ram[address] = instruction
             address += 1
+            '''
 
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
-        if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        if op == ADD:
+            self.register[reg_a] += self.register[reg_b]
+        elif op == SUB:
+            self.register[reg_a] -= self.register[reg_b]
+        elif op == MUL:
+            self.register[reg_a] *= self.register[reg_b]
+        elif op == DIV:
+            self.register[reg_a] /= self.register[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -61,51 +109,31 @@ class CPU:
         '''
         self.ram[mar] = mdr
 
-    def reg_read(self, address):
-        '''
-        Takes address in register and returns value stored there 
-        '''
-        return self.register[address]
-
-    def reg_write(self, address, value):
-        '''
-        Stores value at given address in register
-        '''
-        self.register[address] = value
-
     def run(self):
         '''
         Run the CPU
         '''
-        # Used to exit run()
-        running = True
-
-        while running:
-            # Read memory address stored in PC and store result in IR
-            ir = self.ram_read(self.pc)
-
-            # LDI command
-            if ir == LDI:
-                # Read values at PC+1 and PC+2 into operand_a and operand_b respectively
-                operand_a = self.ram_read(self.pc + 1)
-                operand_b = self.ram_read(self.pc + 2)
-                # Set register at address 'operand_a' to value 'operand_b'
-                self.reg_write(operand_a, operand_b)
-                self.pc += 3
-            # PRN command
-            elif ir == PRN:
-                # Read value at PC+1 into operand_a
-                operand_a = self.ram_read(self.pc + 1)
-                # Print value
-                print(self.reg_read(operand_a))
-                self.pc += 2
-            elif ir == HLT:
-                running = False
-                #self.pc += 1
+        while True:
+            # Get opcodes and operands
+            ir = self.ram[self.pc]
+            op_a = self.ram_read(self.pc + 1)
+            op_b = self.ram_read(self.pc + 2)
+            # To update self.pc counter
+            run_counter = (ir >> 6) + 1
+            # To handle alu operations
+            # NOTE: Less code but add another if statement, may be quicker to implement
+                  # individual helper functions that call ALU with specified operations
+            alu_op = bool(((ir >> 5) & 0b1))
+            
+            if ir in self.branchtable:
+                if alu_op:
+                    self.branchtable[ir](ir, op_a, op_b)
+                else:
+                    self.branchtable[ir](op_a, op_b)
             else:
-                print('Unknown Command!')
-                running = False
-
+                print('Unsupported operation')
+            self.pc += run_counter
+    
 
     def trace(self):
         """
