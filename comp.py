@@ -13,6 +13,8 @@ SAVE_REG = 3 # Store a value in a register (in the LS8 called LDI)
 PRINT_REG = 4 # Corresponds to PRN in the LS8
 PUSH = 5
 POP = 6
+CALL = 7
+RET = 8
 
 # memory = [
 #     PRINT_NICK,
@@ -84,6 +86,41 @@ while running:
         memory[address] = value
 
         pc += 1
+
+    elif inst == POP:
+        # Copy value from register to memory
+        reg_num = memory[pc + 1]
+
+        # Address of item on the top of the stack
+        address = register[SP]
+        # This is the value we popped
+        value = memory[address]
+
+        # Store the value in the register
+        register[reg_num] = value
+
+        pc += 2
+
+        # Incriment the stack pointer
+        register[SP] += 1
+    
+    elif inst == CALL:
+        # Compute return address
+        return_adr = pc + 2
+
+        # Push on the stack
+        register[SP] -= 1
+        memory[register[SP]] = return_addr
+
+        # Set the PC to the value in the given register
+        reg_num = memory[PC + 1]
+        dest_addr = register[reg_num]
+
+        pc = dest_addr
+    
+    elif inst == RET:
+        # Pop return address from the top of stack
+        return_adr = memory[register[SP]]
 
     elif inst == HALT:
         running = False
