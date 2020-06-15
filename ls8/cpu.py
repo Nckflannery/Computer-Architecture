@@ -5,13 +5,14 @@ import sys
 LDI = 0b10000010
 PRN = 0b01000111
 HLT = 0b00000001
+POP = 0b01000110
+PUSH = 0b01000101
+# ALU ops
 MUL = 0b10100010
-
-# Unused so far
 ADD = 0b10100000
 DIV = 0b10100011
 SUB = 0b10100001
-
+SP = 7
 
 class CPU:
     """Main CPU class."""
@@ -21,10 +22,13 @@ class CPU:
         self.ram = [0] * 256
         self.register = [0] * 8
         self.pc = 0
+        self.register[SP] = 0xF4
         self.branchtable = {
             LDI : self.ldi,
             PRN : self.prn,
             HLT : self.hlt,
+            POP : self.pop,
+            PUSH: self.push,
             MUL : self.alu,
             ADD : self.alu,
             DIV : self.alu,
@@ -35,12 +39,27 @@ class CPU:
         self.register[op_a] = op_b 
     
     # Only one operand but was cleaner to just pass them as unused parameters here
-    def prn(self, op_a, op_b):
+    def prn(self, op_a, op_b=None):
         print(self.register[op_a])
     
     # No operands but again was cleaner to pass as unused paramters here
-    def hlt(self, op_a, op_b):
+    def hlt(self, op_a, op_b=None):
         sys.exit()
+    
+    def pop(self, op_a, op_b=None):
+        # Get value from ram at SP in register
+        value = self.ram_read(self.register[SP])
+        # Set register at address given to value
+        self.register[op_a] = value
+        # Increment SP
+        self.register[SP] += 1
+        return value
+    
+    def push(self, op_a, op_b=None):
+        # Decrement SP
+        self.register[SP] -= 1
+        # Write value given to ram at SP address
+        self.ram_write(self.register[SP], self.register[op_a])
         
     def load(self, filename):
         """Load a program into memory."""
@@ -121,10 +140,10 @@ class CPU:
             # To update self.pc counter
             run_counter = (ir >> 6) + 1
             # To handle alu operations
-            # NOTE: Less code but add another if statement, may be quicker to implement
+            # NOTE: Less code but adds another if statement, may be quicker to implement
                   # individual helper functions that call ALU with specified operations
             alu_op = bool(((ir >> 5) & 0b1))
-            
+    
             if ir in self.branchtable:
                 if alu_op:
                     self.branchtable[ir](ir, op_a, op_b)

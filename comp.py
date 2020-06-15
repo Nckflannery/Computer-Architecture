@@ -11,6 +11,8 @@ PRINT_NICK = 1
 HALT = 2
 SAVE_REG = 3 # Store a value in a register (in the LS8 called LDI)
 PRINT_REG = 4 # Corresponds to PRN in the LS8
+PUSH = 5
+POP = 6
 
 # memory = [
 #     PRINT_NICK,
@@ -28,6 +30,10 @@ PRINT_REG = 4 # Corresponds to PRN in the LS8
 memory = [0] * 256
 
 register = [0] * 8 # Like variables R0-R7
+
+# R7 is the SP
+SP = 7
+register[SP] = 0xF4
 
 # Load program into memory
 address = 0
@@ -66,8 +72,21 @@ while running:
         print(value)
         pc += 2
 
+    elif inst == PUSH:
+        # decrement the stack pointer
+        register[SP] -= 1
+
+        # copy value from the register into memory
+        reg_num = memory[pc + 1]
+        value = register[reg_num]
+
+        address = register[SP]
+        memory[address] = value
+
+        pc += 1
+
     elif inst == HALT:
-        break
+        running = False
 
     else:
         print('Unknown Instruction')
